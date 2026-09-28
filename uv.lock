@@ -1063,6 +1063,7 @@ dependencies = [
     { name = "google-genai" },
     { name = "laya" },
     { name = "matplotlib" },
+    { name = "pandas" },
     { name = "python-dotenv" },
     { name = "scikit-learn" },
 ]
@@ -1080,6 +1081,7 @@ requires-dist = [
     { name = "google-genai", specifier = ">=2.25.0" },
     { name = "laya", specifier = "==0.3.10" },
     { name = "matplotlib", specifier = ">=3.11.2" },
+    { name = "pandas", specifier = ">=3.0.6" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
     { name = "scikit-learn", specifier = ">=1.9.1" },
 ]

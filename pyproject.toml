@@ -12,6 +12,7 @@ dependencies = [
     "google-genai>=2.25.0",
     "laya==0.3.10",
     "matplotlib>=3.11.2",
+    "pandas>=3.0.6",
     "python-dotenv>=1.2.3",
     "scikit-learn>=1.9.1",
 ]
@@ -29,3 +30,12 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.8",
 ]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = ["I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
