@@ -1,7 +1,7 @@
 [project]
 name = "laya-demo"
 version = "0.1.0"
-description = "Add your description here"
+description = "Confidence routing demo: Laya as System 1, Gemini as System 2, with a calibration check"
 readme = "README.md"
 authors = [
     { name = "Ajblenke", email = "josephblenke@gmail.com" }
