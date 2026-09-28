@@ -61,6 +61,11 @@ Gemini calls are capped by `--max-gemini-calls`.
 Escalated items get the budget first, then a seeded random sample (`--gemini-baseline`, default 30) so the Gemini alone number is not skewed toward hard items.
 The model defaults to `gemini-3.5-flash`; change it with `--gemini-model` or `GEMINI_MODEL`.
 
+The free tier allows 5 requests per minute per model, so Gemini classifies escalated items in batches of 30, one request per batch.
+Each item's Gemini latency is its batch's time divided by the batch size, so it is an average, not a per question measurement.
+When a model is overloaded (503) or out of quota (429), the batch falls back to `gemini-3.6-flash`, then `gemini-3.1-flash-lite`, and the run skips the failed model from then on.
+The run summary names the models that actually answered.
+
 "Routed accuracy" counts only the items a model answered.
 Items flagged for human review are reported as coverage, not scored.
 

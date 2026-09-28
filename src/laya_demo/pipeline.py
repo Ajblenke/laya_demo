@@ -26,7 +26,7 @@ class Config:
     gemini_model: str | None = None
     max_gemini_calls: int = 60
     gemini_baseline: int = 30  # random items Gemini also answers, to measure Gemini alone
-    gemini_workers: int = 8
+    gemini_batch_size: int = 30  # items per Gemini request; the free tier allows 5 requests a minute
     extra_meta: dict = field(default_factory=dict)
 
 
@@ -121,13 +121,20 @@ def run_pipeline(cfg: Config, log=print, system1=None) -> RunResult:
     else:
         calls, baseline_idx = plan_gemini_calls(records, cfg.gemini_baseline, cfg.max_gemini_calls, cfg.seed)
         n_escalated = sum(r.action == ESCALATE for r in records)
-        log(f"Calling {gemini_model} on {len(calls)} items ({n_escalated} escalated, cap {cfg.max_gemini_calls})")
+        n_requests = -(-len(calls) // cfg.gemini_batch_size)
+        log(
+            f"Calling {gemini_model} on {len(calls)} items in {n_requests} batched requests "
+            f"({n_escalated} escalated, cap {cfg.max_gemini_calls})"
+        )
         system2 = GeminiSystem2(labels, key, model=gemini_model)
         by_idx = {r.idx: r for r in records}
-        answers = system2.answer_many([by_idx[i].text for i in calls], workers=cfg.gemini_workers)
+        answers = system2.answer_many([by_idx[i].text for i in calls], batch_size=cfg.gemini_batch_size)
         apply_gemini(records, dict(zip(calls, answers, strict=True)))
         errors = [a.error for a in answers if a.error]
-        status = f"{gemini_model}, {len(calls)} calls, {len(errors)} errors"
+        status = f"{gemini_model}, {len(calls)} items in {n_requests} requests, {len(errors)} errors"
+        if set(system2.answered_by) - {gemini_model}:
+            used = ", ".join(f"{m} x{n}" for m, n in system2.answered_by.items())
+            status += f"; overloaded, so requests fell back: {used}"
         if errors:
             status += f" (first: {errors[0]})"
         skipped = n_escalated - sum(1 for i in calls if by_idx[i].action == ESCALATE)
