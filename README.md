@@ -69,6 +69,31 @@ The run summary names the models that actually answered.
 "Routed accuracy" counts only the items a model answered.
 Items flagged for human review are reported as coverage, not scored.
 
+## In class: speed first, accuracy after
+
+Four commands split the demo so the speed comparison and the accuracy discussion happen at different moments.
+
+```bash
+uv run laya-race                 # Laya and Gemini on the same 60 messages at once, side by side
+uv run laya-report               # the tier table, trade off, calibration, and every item, no network
+```
+
+`laya-race` loads Laya and warms it up before the clock starts, then waits for Enter (`--no-wait` skips that).
+Laya answers one message at a time in the left panel while Gemini's requests run in the right panel with a live timer.
+Both panels show answers and Laya's confidence but not whether they are right, so accuracy stays for the report.
+Gemini answers every message in the race, so "Gemini alone" is scored on the whole sample.
+
+To run the two systems as separate steps instead:
+
+```bash
+uv run laya-run                  # Laya alone, one line per answer, saves data/laya_results.json
+uv run gemini-run                # Gemini on Laya's escalated items, one line per request, saves the run
+uv run laya-report
+```
+
+`gemini-run` reads `data/laya_results.json`, so it can be rerun without running Laya again.
+`laya-report` reads `data/last_run.json` by default; pass `--run` for an older one or `--no-items` to skip the per item table.
+
 ## The notebook
 
 `intro_to_laya.ipynb` is the presenter walkthrough.

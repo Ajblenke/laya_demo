@@ -8,6 +8,7 @@ from .records import RunResult
 
 DEFAULT_DATA_DIR = Path("data")
 LAST_RUN = "last_run.json"
+LAYA_RESULTS = "laya_results.json"  # the handoff from `laya-run` to `gemini-run`
 
 
 def save_run(run: RunResult, data_dir: Path = DEFAULT_DATA_DIR) -> Path:
@@ -19,6 +20,21 @@ def save_run(run: RunResult, data_dir: Path = DEFAULT_DATA_DIR) -> Path:
     path.write_text(json.dumps(run.to_dict(), indent=1))
     shutil.copyfile(path, Path(data_dir) / LAST_RUN)
     return path
+
+
+def save_laya_results(run: RunResult, data_dir: Path = DEFAULT_DATA_DIR) -> Path:
+    """Write Laya's routed answers, before Gemini, for `gemini-run` to pick up."""
+    path = Path(data_dir) / LAYA_RESULTS
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(run.to_dict(), indent=1))
+    return path
+
+
+def load_laya_results(data_dir: Path = DEFAULT_DATA_DIR) -> RunResult:
+    path = Path(data_dir) / LAYA_RESULTS
+    if not path.exists():
+        raise FileNotFoundError(f"No Laya results at {path}. Run `uv run laya-run` first.")
+    return RunResult.from_dict(json.loads(path.read_text()))
 
 
 def load_run(path: Path | None = None, data_dir: Path = DEFAULT_DATA_DIR) -> RunResult:

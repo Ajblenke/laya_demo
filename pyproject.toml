@@ -14,11 +14,16 @@ dependencies = [
     "matplotlib>=3.11.2",
     "pandas>=3.0.6",
     "python-dotenv>=1.2.3",
+    "rich>=15.0.0",
     "scikit-learn>=1.9.1",
 ]
 
 [project.scripts]
 laya-demo = "laya_demo:main"
+laya-run = "laya_demo:laya_main"
+gemini-run = "laya_demo:gemini_main"
+laya-race = "laya_demo:race_main"
+laya-report = "laya_demo:report_main"
 
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]

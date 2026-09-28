@@ -12,6 +12,7 @@ import os
 import re
 import time
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 
 # The model the installed google-genai release uses in its own tests. Override with
@@ -112,11 +113,14 @@ class GeminiSystem2:
         self.model = model or default_model()
         self.fallbacks = [m for m in FALLBACK_MODELS if m != self.model]
         self.answered_by: Counter[str] = Counter()
+        self.last_model: str | None = None  # the model that answered the latest batch
         self._exhausted: set[str] = set()
         self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=int(timeout_s * 1000)))
         self._config = types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             temperature=0.0,
+            # No tools are used; turning this off also silences the SDK's warning on every request.
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             response_mime_type="application/json",
             response_schema={
                 "type": "ARRAY",
@@ -161,12 +165,14 @@ class GeminiSystem2:
                 self._exhausted.add(model)
                 continue
             self.answered_by[model] += 1
+            self.last_model = model
             return reply
         raise AssertionError("unreachable")
 
     def answer_batch(self, texts: list[str]) -> list[System2Answer]:
         """Classify several texts in one request. Every item gets the batch latency divided evenly."""
         start = time.perf_counter()
+        self.last_model = None
         try:
             reply = self._generate(format_batch(texts))
         # Deliberately broad: during a live demo a failed call (network, quota, a model name the
@@ -180,9 +186,27 @@ class GeminiSystem2:
     def answer(self, text: str) -> System2Answer:
         return self.answer_batch([text])[0]
 
-    def answer_many(self, texts: list[str], batch_size: int = DEFAULT_BATCH_SIZE) -> list[System2Answer]:
-        """Answer texts in sequential batches of `batch_size`, one request each, in input order."""
+    def answer_many(
+        self,
+        texts: list[str],
+        batch_size: int = DEFAULT_BATCH_SIZE,
+        on_batch_start: Callable[[int, int, int], None] | None = None,
+        on_batch_done: Callable[[int, int, list[System2Answer], str | None], None] | None = None,
+    ) -> list[System2Answer]:
+        """Answer texts in sequential batches of `batch_size`, one request each, in input order.
+
+        `on_batch_start(batch_no, n_batches, size)` fires as a request goes out, and
+        `on_batch_done(batch_no, n_batches, answers, model)` when it returns, so a live display can
+        show the wait. `model` is the one that answered, or None when every model failed.
+        """
         out: list[System2Answer] = []
-        for start in range(0, len(texts), batch_size):
-            out.extend(self.answer_batch(texts[start : start + batch_size]))
+        n_batches = -(-len(texts) // batch_size)
+        for batch_no, start in enumerate(range(0, len(texts), batch_size), 1):
+            batch = texts[start : start + batch_size]
+            if on_batch_start is not None:
+                on_batch_start(batch_no, n_batches, len(batch))
+            answers = self.answer_batch(batch)
+            out.extend(answers)
+            if on_batch_done is not None:
+                on_batch_done(batch_no, n_batches, answers, self.last_model)
         return out

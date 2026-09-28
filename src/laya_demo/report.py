@@ -131,6 +131,56 @@ TRADEOFF_COLUMNS = [
 ]
 
 
+def item_rows(run: RunResult) -> list[dict]:
+    """One row per item, most confident first: what Laya said, how sure it was, and the gold label."""
+    rows = []
+    for r in sorted(run.records, key=lambda r: -r.laya_confidence):
+        rows.append(
+            {
+                "conf": f"{r.laya_confidence:.3f}",
+                "top_prob": f"{r.laya_top_prob:.3f}",
+                "ok": "Y" if r.laya_correct else ".",
+                "tier": r.tier,
+                "laya": r.laya_answer,
+                "gemini": r.gemini_answer or "-",
+                "gold": r.gold,
+                "text": " ".join(r.text.split())[:60],
+            }
+        )
+    return rows
+
+
+ITEM_COLUMNS = [
+    ("conf", "conf", "str"),
+    ("top_prob", "top_p", "str"),
+    ("ok", "Laya ok", "str"),
+    ("tier", "tier", "str"),
+    ("laya", "Laya answer", "str"),
+    ("gemini", "Gemini answer", "str"),
+    ("gold", "gold", "str"),
+    ("text", "message", "str"),
+]
+
+
+def render_items(run: RunResult) -> str:
+    return format_rows(item_rows(run), ITEM_COLUMNS)
+
+
+def speed_lines(run: RunResult) -> list[str]:
+    """Wall clock time for each side, when the run was a race or came from the split scripts."""
+    race = run.meta.get("race")
+    laya_s = race["laya_s"] if race else run.meta.get("laya_s")
+    gemini_s = race["gemini_s"] if race else run.meta.get("gemini_s")
+    if laya_s is None:
+        return []
+    n_laya = len(run.records)
+    n_gemini = sum(r.gemini_answer is not None or r.gemini_error is not None for r in run.records)
+    line = f"Wall clock: Laya {n_laya} items in {laya_s:.1f} s ({_fmt(laya_s * 1000 / max(n_laya, 1), 'ms')} each)"
+    if gemini_s is not None and n_gemini:
+        line += f", Gemini {n_gemini} items in {gemini_s:.1f} s ({_fmt(gemini_s * 1000 / n_gemini, 'ms')} each)"
+    return [line]
+
+
 def render(run: RunResult, n_bins: int = 10) -> str:
     """The full text report the CLI prints."""
     meta = run.meta
@@ -141,6 +191,7 @@ def render(run: RunResult, n_bins: int = 10) -> str:
             f"routing signal: {meta['signal']}  thresholds: {tuple(meta['thresholds'])}"
         ),
         f"System 2: {meta['gemini_status']}",
+        *speed_lines(run),
         "",
         "Per tier",
         format_rows(tier_table(run.records, run.tiers), TIER_COLUMNS),
