@@ -11,6 +11,7 @@ dependencies = [
     "datasets>=5.0.1",
     "google-genai>=2.25.0",
     "laya==0.3.10",
+    "matplotlib>=3.11.2",
     "python-dotenv>=1.2.3",
     "scikit-learn>=1.9.1",
 ]
@@ -24,6 +25,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "ipykernel>=7.3.0",
     "pytest>=9.1.1",
     "ruff>=0.16.8",
 ]
